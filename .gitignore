@@ -1,26 +1,22 @@
 ```
-# Dependencies
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Containers
+.dockerenv
+!docker-compose.yml
 
-# Environment variables
+# Dependencies
+node_modules/
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
 .env
 .env.local
 *.env.*
 
-# Logs
-*.log
-
-# Coverage reports
-.coverage
-coverage/
-htmlcov/
-
-# IDE
+# Editors
 .vscode/
 .idea/
 *.swp
@@ -33,5 +29,12 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
-*.egg-info/
+target/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
 ```
