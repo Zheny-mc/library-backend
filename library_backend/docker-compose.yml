@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # MongoDB база данных
+  mongodb:
+    image: mongo:6
+    container_name: library_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - library_network
+
+  # Redis для Celery
+  redis:
+    image: redis:7-alpine
+    container_name: library_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - library_network
+
+  # MinIO (S3-совместимое хранилище) для локальной разработки
+  minio:
+    image: minio/minio:latest
+    container_name: library_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - library_network
+
+  # Flask приложение
+  web:
+    build: .
+    container_name: library_web
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/library_db
+      - REDIS_URL=redis://redis:6379/0
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_BUCKET_NAME=library-books
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+    depends_on:
+      - mongodb
+      - redis
+      - minio
+    volumes:
+      - .:/app
+    networks:
+      - library_network
+
+  # Celery worker для фоновой обработки книг
+  celery_worker:
+    build: .
+    container_name: library_celery_worker
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/library_db
+      - REDIS_URL=redis://redis:6379/0
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_BUCKET_NAME=library-books
+    depends_on:
+      - mongodb
+      - redis
+      - minio
+    volumes:
+      - .:/app
+    networks:
+      - library_network
+
+volumes:
+  mongo_data:
+  minio_data:
+
+networks:
+  library_network:
+    driver: bridge
